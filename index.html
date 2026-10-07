@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abidjan : L'Ascension</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #111;
+}
+
+#game {
+    position: fixed;
+    inset: 0;
+}
+
+#interface {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 10;
+    color: white;
+}
+
+.card {
+    background: rgba(0,0,0,.65);
+    padding: 12px 16px;
+    border-radius: 14px;
+    backdrop-filter: blur(8px);
+    margin-bottom: 8px;
+}
+
+#money {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+#mission {
+    font-size: 14px;
+}
+
+#joystick {
+    position: fixed;
+    left: 25px;
+    bottom: 25px;
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.18);
+    border: 2px solid rgba(255,255,255,.4);
+    z-index: 20;
+    touch-action: none;
+}
+
+#stick {
+    position: absolute;
+    width: 55px;
+    height: 55px;
+    left: 37px;
+    top: 37px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.7);
+}
+
+#action {
+    position: fixed;
+    right: 25px;
+    bottom: 35px;
+    width: 75px;
+    height: 75px;
+    border: none;
+    border-radius: 50%;
+    background: #ffb300;
+    color: #111;
+    font-size: 25px;
+    font-weight: bold;
+    z-index: 20;
+    touch-action: manipulation;
+}
+
+#message {
+    position: fixed;
+    left: 50%;
+    bottom: 175px;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,.75);
+    color: white;
+    padding: 12px 18px;
+    border-radius: 12px;
+    z-index: 20;
+    display: none;
+    text-align: center;
+}
+</style>
+</head>
+
+<body>
+
+<div id="game"></div>
+
+<div id="interface">
+    <div class="card">
+        <div id="money">💰 10 000 FCFA</div>
+        <div id="mission">Mission : Trouve le commerce 🏪</div>
+    </div>
+</div>
+
+<div id="message"></div>
+
+<div id="joystick">
+    <div id="stick"></div>
+</div>
+
+<button id="action">⚡</button>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+<script>
+
+const scene = new THREE.Scene();
+
+scene.background = new THREE.Color(0x87ceeb);
+
+const camera = new THREE.PerspectiveCamera(
+    60,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+);
+
+const renderer = new THREE.WebGLRenderer({
+    antialias: true
+});
+
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+document.getElementById("game").appendChild(renderer.domElement);
+
+
+// ========================
+// LUMIÈRE
+// ========================
+
+const ambient = new THREE.AmbientLight(0xffffff, 1.2);
+scene.add(ambient);
+
+const sun = new THREE.DirectionalLight(0xffffff, 2);
+sun.position.set(20, 40, 20);
+scene.add(sun);
+
+
+// ========================
+// SOL
+// ========================
+
+const groundGeometry =
+    new THREE.PlaneGeometry(100, 100);
+
+const groundMaterial =
+    new THREE.MeshStandardMaterial({
+        color: 0x6c8c52
+    });
+
+const ground =
+    new THREE.Mesh(
+        groundGeometry,
+        groundMaterial
+    );
+
+ground.rotation.x = -Math.PI / 2;
+scene.add(ground);
+
+
+// ========================
+// ROUTE
+// ========================
+
+const roadGeometry =
+    new THREE.BoxGeometry(14, .1, 100);
+
+const roadMaterial =
+    new THREE.MeshStandardMaterial({
+        color: 0x333333
+    });
+
+const road =
+    new THREE.Mesh(
+        roadGeometry,
+        roadMaterial
+    );
+
+road.position.y = .05;
+scene.add(road);
+
+
+// ========================
+// BÂTIMENTS
+// ========================
+
+function createBuilding(x, z, color, height) {
+
+    const geometry =
+        new THREE.BoxGeometry(6, height, 6);
+
+    const material =
+        new THREE.MeshStandardMaterial({
+            color: color
+        });
+
+    const building =
+        new THREE.Mesh(
+            geometry,
+            material
+        );
+
+    building.position.set(
+        x,
+        height / 2,
+        z
+    );
+
+    scene.add(building);
+
+    return building;
+}
+
+createBuilding(-12, -8, 0xf2a900, 8);
+createBuilding(12, -5, 0xd95f59, 12);
+createBuilding(-12, 12, 0x4c8bf5, 10);
+createBuilding(12, 15, 0xeeeeee, 7);
+
+
+// ========================
+// COMMERCE
+// ========================
+
+const shop =
+    createBuilding(0, -25, 0x19a974, 5);
+
+shop.scale.set(1.5, 1, 1);
+
+
+// ========================
+// JOUEUR
+// ========================
+
+const playerGeometry =
+    new THREE.CapsuleGeometry(.7, 1.4, 8, 16);
+
+const playerMaterial =
+    new THREE.MeshStandardMaterial({
+        color: 0xffd21f
+    });
+
+const player =
+    new THREE.Mesh(
+        playerGeometry,
+        playerMaterial
+    );
+
+player.position.set(0, 1.4, 10);
+
+scene.add(player);
+
+
+// ========================
+// CAMÉRA
+// ========================
+
+camera.position.set(
+    0,
+    8,
+    14
+);
+
+
+// ========================
+// ARGENT
+// ========================
+
+let money = 10000;
+
+function updateMoney() {
+
+    document.getElementById("money").textContent =
+        "💰 " +
+        money.toLocaleString("fr-FR") +
+        " FCFA";
+}
+
+
+// ========================
+// JOYSTICK
+// ========================
+
+const joystick =
+    document.getElementById("joystick");
+
+const stick =
+    document.getElementById("stick");
+
+let joystickX = 0;
+let joystickY = 0;
+let touching = false;
+
+function updateJoystick(x, y) {
+
+    const rect =
+        joystick.getBoundingClientRect();
+
+    let dx =
+        x - (rect.left + rect.width / 2);
+
+    let dy =
+        y - (rect.top + rect.height / 2);
+
+    const max = 38;
+
+    const distance =
+        Math.sqrt(dx * dx + dy * dy);
+
+    if (distance > max) {
+
+        dx =
+            dx / distance * max;
+
+        dy =
+            dy / distance * max;
+    }
+
+    stick.style.left =
+        (37 + dx) + "px";
+
+    stick.style.top =
+        (37 + dy) + "px";
+
+    joystickX =
+        dx / max;
+
+    joystickY =
+        dy / max;
+}
+
+function resetJoystick() {
+
+    touching = false;
+
+    joystickX = 0;
+    joystickY = 0;
+
+    stick.style.left = "37px";
+    stick.style.top = "37px";
+}
+
+joystick.addEventListener(
+    "touchstart",
+    e => {
+
+        touching = true;
+
+        const t =
+            e.touches[0];
+
+        updateJoystick(
+            t.clientX,
+            t.clientY
+        );
+    },
+    { passive: false }
+);
+
+joystick.addEventListener(
+    "touchmove",
+    e => {
+
+        if (!touching) return;
+
+        const t =
+            e.touches[0];
+
+        updateJoystick(
+            t.clientX,
+            t.clientY
+        );
+    },
+    { passive: false }
+);
+
+joystick.addEventListener(
+    "touchend",
+    resetJoystick
+);
+
+
+// ========================
+// DÉPLACEMENT
+// ========================
+
+function movePlayer() {
+
+    const speed = 0.12;
+
+    player.position.x +=
+        joystickX * speed;
+
+    player.position.z +=
+        joystickY * speed;
+
+    // Limites du monde
+
+    player.position.x =
+        Math.max(
+            -45,
+            Math.min(
+                45,
+                player.position.x
+            )
+        );
+
+    player.position.z =
+        Math.max(
+            -45,
+            Math.min(
+                45,
+                player.position.z
+            )
+        );
+
+    // Rotation du joueur
+
+    if (
+        Math.abs(joystickX) > .1 ||
+        Math.abs(joystickY) > .1
+    ) {
+
+        player.rotation.y =
+            Math.atan2(
+                joystickX,
+                joystickY
+            );
+    }
+}
+
+
+// ========================
+// CAMÉRA SUIVEUSE
+// ========================
+
+function updateCamera() {
+
+    const targetX =
+        player.position.x;
+
+    const targetZ =
+        player.position.z;
+
+    camera.position.x +=
+        (targetX - camera.position.x) * .08;
+
+    camera.position.z +=
+        (targetZ + 12 - camera.position.z) * .08;
+
+    camera.position.y +=
+        (8 - camera.position.y) * .08;
+
+    camera.lookAt(
+        player.position.x,
+        1,
+        player.position.z
+    );
+}
+
+
+// ========================
+// MISSION
+// ========================
+
+const message =
+    document.getElementById("message");
+
+function showMessage(text) {
+
+    message.textContent = text;
+    message.style.display = "block";
+
+    setTimeout(() => {
+
+        message.style.display = "none";
+
+    }, 2500);
+}
+
+document
+    .getElementById("action")
+    .addEventListener("click", () => {
+
+        const distance =
+            player.position.distanceTo(
+                shop.position
+            );
+
+        if (distance < 7) {
+
+            money += 2500;
+
+            updateMoney();
+
+            document.getElementById("mission")
+                .textContent =
+                "Mission réussie ! 🎉";
+
+            showMessage(
+                "🔥 Tu viens de gagner 2 500 FCFA !"
+            );
+
+        } else {
+
+            showMessage(
+                "🏪 Approche-toi du commerce !"
+            );
+        }
+
+    });
+
+
+// ========================
+// BOUCLE DU JEU
+// ========================
+
+function animate() {
+
+    requestAnimationFrame(animate);
+
+    movePlayer();
+
+    updateCamera();
+
+    renderer.render(
+        scene,
+        camera
+    );
+}
+
+animate();
+
+
+// ========================
+// ÉCRAN
+// ========================
+
+window.addEventListener(
+    "resize",
+    () => {
+
+        camera.aspect =
+            window.innerWidth /
+            window.innerHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            window.innerWidth,
+            window.innerHeight
+        );
+    }
+);
+
+</script>
+
+</body>
+</html>
